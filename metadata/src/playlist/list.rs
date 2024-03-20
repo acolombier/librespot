@@ -48,6 +48,14 @@ pub struct Playlist {
     pub geoblocks: Geoblocks,
 }
 
+#[derive(Debug, Clone)]
+pub struct Rootlist {
+    pub id: NamedSpotifyId,
+    pub revision: Vec<u8>,
+    pub attributes: PlaylistAttributes,
+    pub contents: PlaylistItemList,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Playlists(pub Vec<SpotifyId>);
 
@@ -122,6 +130,28 @@ impl Metadata for Playlist {
             has_abuse_reporting: playlist.has_abuse_reporting,
             capabilities: playlist.capabilities,
             geoblocks: playlist.geoblocks,
+        })
+    }
+}
+
+#[async_trait]
+impl Metadata for Rootlist {
+    type Message = protocol::playlist4_external::SelectedListContent;
+
+    async fn request(session: &Session, _: &SpotifyId) -> RequestResult {
+        session.spclient().get_rootlist().await
+    }
+
+    fn parse(msg: &Self::Message, id: &SpotifyId) -> Result<Self, Error> {
+        // the playlist proto doesn't contain the id so we decorate it
+        let playlist = SelectedListContent::try_from(msg).unwrap();
+        let id = NamedSpotifyId::from_spotify_id(*id, &playlist.owner_username);
+
+        Ok(Self {
+            id,
+            revision: playlist.revision,
+            attributes: playlist.attributes,
+            contents: playlist.contents,
         })
     }
 }

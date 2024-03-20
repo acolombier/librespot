@@ -595,6 +595,12 @@ impl SpClient {
         self.request(&Method::GET, &endpoint, None, None).await
     }
 
+    pub async fn get_rootlist(&self) -> SpClientResult {
+        let endpoint: String = format!("/playlist/v2/user/{}/rootlist?decorate=revision%2Cattributes%2Clength%2Cowner%2Ccapabilities&from=0&length=120", self.session().username());
+
+        self.request(&Method::GET, &endpoint, None, None).await
+    }
+
     pub async fn get_user_profile(
         &self,
         username: &str,

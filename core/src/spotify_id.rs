@@ -40,17 +40,17 @@ impl From<&str> for SpotifyItemType {
     }
 }
 
-impl From<SpotifyItemType> for &str {
-    fn from(item_type: SpotifyItemType) -> &'static str {
+impl From<SpotifyItemType> for String {
+    fn from(item_type: SpotifyItemType) -> String {
         match item_type {
-            SpotifyItemType::Album => "album",
-            SpotifyItemType::Artist => "artist",
-            SpotifyItemType::Episode => "episode",
-            SpotifyItemType::Playlist => "playlist",
-            SpotifyItemType::Show => "show",
-            SpotifyItemType::Track => "track",
-            SpotifyItemType::Local => "local",
-            _ => "unknown",
+            SpotifyItemType::Album => "album".into(),
+            SpotifyItemType::Artist => "artist".into(),
+            SpotifyItemType::Episode => "episode".into(),
+            SpotifyItemType::Playlist => "playlist".into(),
+            SpotifyItemType::Show => "show".into(),
+            SpotifyItemType::Track => "track".into(),
+            SpotifyItemType::Local => "local".into(),
+            _ => "unknown".into(),
         }
     }
 }
@@ -156,7 +156,10 @@ impl SpotifyId {
                 id: u128::from_be_bytes(dst),
                 item_type: SpotifyItemType::Unknown,
             }),
-            Err(_) => Err(SpotifyIdError::InvalidId.into()),
+            Err(_) => Ok(Self {
+                id: 0,
+                item_type: SpotifyItemType::Unknown,
+            }),
         }
     }
 
@@ -285,13 +288,15 @@ impl SpotifyId {
     pub fn to_uri(&self) -> Result<String, Error> {
         // 8 chars for the "spotify:" prefix + 1 colon + 22 chars base62 encoded ID  = 31
         // + unknown size item_type.
-        let item_type: &str = self.item_type.into();
+        let item_type: String = self.item_type.into();
         let mut dst = String::with_capacity(31 + item_type.len());
         dst.push_str("spotify:");
-        dst.push_str(item_type);
-        dst.push(':');
-        let base_62 = self.to_base62()?;
-        dst.push_str(&base_62);
+        dst.push_str(&item_type);
+        if self.id > 0 {
+            dst.push(':');
+            let base_62 = self.to_base62()?;
+            dst.push_str(&base_62);
+        }
 
         Ok(dst)
     }
@@ -341,15 +346,17 @@ impl NamedSpotifyId {
     }
 
     pub fn to_uri(&self) -> Result<String, Error> {
-        let item_type: &str = self.inner_id.item_type.into();
+        let item_type: String = self.inner_id.item_type.into();
         let mut dst = String::with_capacity(37 + self.username.len() + item_type.len());
         dst.push_str("spotify:user:");
         dst.push_str(&self.username);
         dst.push(':');
-        dst.push_str(item_type);
-        dst.push(':');
-        let base_62 = self.to_base62()?;
-        dst.push_str(&base_62);
+        dst.push_str(&item_type);
+        if self.id > 0 {
+            dst.push(':');
+            let base_62 = self.to_base62()?;
+            dst.push_str(&base_62);
+        }
 
         Ok(dst)
     }
@@ -497,10 +504,7 @@ impl TryFrom<&protocol::metadata::ArtistWithRole> for SpotifyId {
 impl TryFrom<&protocol::playlist4_external::Item> for SpotifyId {
     type Error = crate::Error;
     fn try_from(item: &protocol::playlist4_external::Item) -> Result<Self, Self::Error> {
-        Ok(Self {
-            item_type: SpotifyItemType::Track,
-            ..Self::from_uri(item.uri())?
-        })
+        Self::from_uri(item.uri())
     }
 }
 
@@ -559,7 +563,7 @@ mod tests {
         raw: &'static [u8],
     }
 
-    static CONV_VALID: [ConversionCase; 5] = [
+    static CONV_VALID: [ConversionCase; 7] = [
         ConversionCase {
             id: 238762092608182713602505436543891614649,
             kind: SpotifyItemType::Track,
@@ -604,6 +608,24 @@ mod tests {
             id: 0,
             kind: SpotifyItemType::Local,
             uri: "spotify:local:0000000000000000000000",
+            base16: "00000000000000000000000000000000",
+            base62: "0000000000000000000000",
+            raw: &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        },
+        ConversionCase {
+            id: 0,
+            kind: SpotifyItemType::Unknown,
+            // kind: SpotifyItemType::Genre("edm_dance".to_owned()),
+            uri: "spotify:genre:edm_dance",
+            base16: "00000000000000000000000000000000",
+            base62: "0000000000000000000000",
+            raw: &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        },
+        ConversionCase {
+            id: 0,
+            kind: SpotifyItemType::Unknown,
+            // kind: SpotifyItemType::MediaListConfig("dailymix".to_owned(), "default_v41".to_owned()),
+            uri: "spotify:medialistconfig:dailymix:default_v41",
             base16: "00000000000000000000000000000000",
             base62: "0000000000000000000000",
             raw: &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

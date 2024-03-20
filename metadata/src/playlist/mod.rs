@@ -7,4 +7,4 @@ pub mod operation;
 pub mod permission;
 
 pub use annotation::PlaylistAnnotation;
-pub use list::Playlist;
+pub use list::{Playlist, Rootlist};

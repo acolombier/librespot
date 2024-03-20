@@ -35,7 +35,7 @@ pub use album::Album;
 pub use artist::Artist;
 pub use episode::Episode;
 pub use lyrics::Lyrics;
-pub use playlist::Playlist;
+pub use playlist::{Playlist, Rootlist};
 pub use show::Show;
 pub use track::Track;
 
